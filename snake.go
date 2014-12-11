@@ -109,6 +109,15 @@ func (field *Field) nextRound(snake *Snake) *Field {
 	x, y := snake.get()
 	if field.getVitality(x, y) < 0 {
 		pts++
+		for {
+			rand.Seed(time.Now().UnixNano())
+			x = rand.Intn(setwidth - 1)
+			y = rand.Intn(setheight - 1)
+			if new_field.getVitality(x, y) == 0 {
+				new_field.setVitality(x, y, -11)
+				break
+			}
+		}
 	}
 	new_field.setVitality(snake.x, snake.y, snake.length)
 	for y := 0; y < field.height; y++ {
@@ -187,6 +196,7 @@ func main() {
 	flag.IntVar(&setfps, "f", 6, "frames per second")
 	flag.Parse()
 
+	rand.Seed(time.Now().UnixNano())
 	field = generateFirstRound(setwidth, setheight)
 
 	snake := newSnake()
