@@ -107,7 +107,8 @@ func (field *Field) nextRound(snake *Snake) *Field {
 		snake.move(-1, 0)
 	}
 	x, y := snake.get()
-	if field.getVitality(x, y) < 0 {
+	vit := field.getVitality(x, y)
+	if vit < 0 {
 		pts++
 		for {
 			rand.Seed(time.Now().UnixNano())
@@ -118,6 +119,10 @@ func (field *Field) nextRound(snake *Snake) *Field {
 				break
 			}
 		}
+	} else if vit > 0 && direction != 0 {
+		fmt.Printf("GameOver!!!\nYour Score: %v Points\n", pts)
+		exec.Command("stty", "-f", "/dev/tty", "echo").Run()
+		os.Exit(0)
 	}
 	new_field.setVitality(snake.x, snake.y, snake.length)
 	for y := 0; y < field.height; y++ {
@@ -201,6 +206,7 @@ func main() {
 
 	snake := newSnake()
 	snake.set(rand.Intn(setwidth), rand.Intn(setheight))
+	direction = 0
 	ite := 0
 	pts = 0
 
