@@ -178,13 +178,21 @@ func getDirection() {
 		kc := fmt.Sprintf("%v", b)
 		switch kc {
 		case "[65]", "[119]", "[107]", "up":
-			direction = 1
+			if direction != 3 {
+				direction = 1
+			}
 		case "[67]", "[100]", "[108]", "right":
-			direction = 2
+			if direction != 4 {
+				direction = 2
+			}
 		case "[66]", "[115]", "[106]", "down":
-			direction = 3
+			if direction != 1 {
+				direction = 3
+			}
 		case "[68]", "[97]", "[104]", "left":
-			direction = 4
+			if direction != 2 {
+				direction = 4
+			}
 		case "[113]", "quit":
 			exec.Command("stty", "-f", "/dev/tty", "echo").Run()
 			os.Exit(0)
