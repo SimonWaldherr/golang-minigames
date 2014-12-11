@@ -18,14 +18,16 @@ type Field struct {
 }
 
 type Snake struct {
-	x int
-	y int
+	x      int
+	y      int
+	length int
 }
 
 var field *Field
 var snake *Snake
 
 var (
+	pts       int
 	setfps    int
 	setwidth  int
 	setheight int
@@ -33,7 +35,7 @@ var (
 )
 
 func newSnake() *Snake {
-	return &Snake{x: 0, y: 0}
+	return &Snake{x: 0, y: 0, length: 8}
 }
 
 func (snake *Snake) set(x, y int) {
@@ -41,9 +43,29 @@ func (snake *Snake) set(x, y int) {
 	snake.y = y
 }
 
+func (snake *Snake) get() (int, int) {
+	return snake.x, snake.y
+}
+
+func (snake *Snake) len(l int) {
+	snake.length += l
+}
+
 func (snake *Snake) move(x, y int) {
-	snake.x = snake.x + x
-	snake.y = snake.y + y
+	if snake.x+x >= setwidth {
+		snake.x = 0
+	} else if snake.x+x < 0 {
+		snake.x = setwidth - 1
+	} else {
+		snake.x += x
+	}
+	if snake.y+y >= setheight {
+		snake.y = 0
+	} else if snake.y+y < 0 {
+		snake.y = setheight - 1
+	} else {
+		snake.y += y
+	}
 }
 
 func newField(width, height int) *Field {
@@ -68,7 +90,7 @@ func (field *Field) getVitality(x, y int) int {
 
 func generateFirstRound(width, height int) *Field {
 	field := newField(width, height)
-	field.setVitality(rand.Intn(width), rand.Intn(height), 1)
+	field.setVitality(rand.Intn(width), rand.Intn(height), -11)
 	return field
 }
 
@@ -84,16 +106,32 @@ func (field *Field) nextRound(snake *Snake) *Field {
 	case 4:
 		snake.move(-1, 0)
 	}
-	new_field.setVitality(snake.x, snake.y, 1)
+	x, y := snake.get()
+	if field.getVitality(x, y) < 0 {
+		pts++
+	}
+	new_field.setVitality(snake.x, snake.y, snake.length)
+	for y := 0; y < field.height; y++ {
+		for x := 0; x < field.width; x++ {
+			vit := field.getVitality(x, y)
+			if vit > 0 {
+				new_field.setVitality(x, y, vit-1)
+			}
+		}
+	}
 	return new_field
 }
 
 func (field *Field) printField() string {
 	var buffer bytes.Buffer
-	for y := 0; y < field.height; y++ {
+	var ptsstr string = fmt.Sprintf("Points: %v \n", pts)
+	buffer.Write([]byte(ptsstr))
+	for y := 1; y < field.height; y++ {
 		for x := 0; x < field.width; x++ {
 			if field.getVitality(x, y) > 0 {
 				buffer.WriteByte(byte('#'))
+			} else if field.getVitality(x, y) < 0 {
+				buffer.WriteByte(byte('O'))
 			} else {
 				buffer.WriteByte(byte(' '))
 			}
@@ -153,6 +191,8 @@ func main() {
 
 	snake := newSnake()
 	snake.set(rand.Intn(setwidth), rand.Intn(setheight))
+	ite := 0
+	pts = 0
 
 	go getDirection()
 
@@ -162,5 +202,10 @@ func main() {
 		field = field.nextRound(snake)
 		str := field.printField()
 		fmt.Print(str)
+		if ite == 10 {
+			snake.len(1)
+			ite = 0
+		}
+		ite++
 	}
 }
