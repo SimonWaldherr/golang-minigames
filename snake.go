@@ -76,7 +76,7 @@ func newField(width, height int) *Field {
 	return &Field{cells: cells, width: width, height: height}
 }
 
-func (field *Field) set(x, y int, vitality int) {
+func (field *Field) set(x, y, vitality int) {
 	field.cells[y][x] = vitality
 }
 
@@ -90,7 +90,7 @@ func (field *Field) get(x, y int) int {
 
 func generateFirstRound(width, height int) *Field {
 	field := newField(width, height)
-	field.next(1)
+	field.nextRound(1)
 	return field
 }
 
@@ -110,7 +110,7 @@ func (field *Field) nextFrame(snake *Snake) *Field {
 	vit := field.get(x, y)
 	if vit < 0 {
 		pts++
-		field.next(pts)
+		field.nextRound(pts)
 	} else if vit > 0 && direction != 0 {
 		end()
 	}
@@ -126,7 +126,7 @@ func (field *Field) nextFrame(snake *Snake) *Field {
 	return new_field
 }
 
-func (field *Field) next(p int) {
+func (field *Field) nextRound(p int) {
 	for {
 		rand.Seed(time.Now().UnixNano())
 		x := rand.Intn(setwidth-10) + 5
@@ -142,7 +142,7 @@ func (field *Field) print() string {
 	var buffer bytes.Buffer
 	var ptsstr string = fmt.Sprintf("Points: %v \n", pts)
 	buffer.Write([]byte(ptsstr))
-	for y := 0; y < field.height-2; y++ {
+	for y := 0; y < field.height; y++ {
 		for x := 0; x < field.width; x++ {
 			if field.get(x, y) > 0 {
 				buffer.WriteByte(byte('#'))
@@ -211,11 +211,14 @@ func main() {
 	flag.IntVar(&setfps, "f", 6, "frames per second")
 	flag.Parse()
 
+	setheight -= 2
+
 	rand.Seed(time.Now().UnixNano())
 	field = generateFirstRound(setwidth, setheight)
 
 	snake := newSnake()
 	snake.set(rand.Intn(setwidth), rand.Intn(setheight))
+
 	direction = 0
 	ite := 0
 	pts = 0
