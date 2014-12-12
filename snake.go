@@ -51,7 +51,7 @@ func (snake *Snake) len(l int) {
 	snake.length += l
 }
 
-func (snake *Snake) move(x, y int) {
+func (snake *Snake) mov(x, y int) {
 	if snake.x+x >= setwidth {
 		snake.x = 0
 	} else if snake.x+x < 0 {
@@ -76,11 +76,11 @@ func newField(width, height int) *Field {
 	return &Field{cells: cells, width: width, height: height}
 }
 
-func (field *Field) setVitality(x, y int, vitality int) {
+func (field *Field) set(x, y int, vitality int) {
 	field.cells[y][x] = vitality
 }
 
-func (field *Field) getVitality(x, y int) int {
+func (field *Field) get(x, y int) int {
 	x += field.width
 	x %= field.width
 	y += field.height
@@ -90,61 +90,63 @@ func (field *Field) getVitality(x, y int) int {
 
 func generateFirstRound(width, height int) *Field {
 	field := newField(width, height)
-	field.setVitality(rand.Intn(width), rand.Intn(height), -11)
+	field.next(1)
 	return field
 }
 
-func (field *Field) nextRound(snake *Snake) *Field {
+func (field *Field) nextFrame(snake *Snake) *Field {
 	new_field := field
 	switch direction {
 	case 1:
-		snake.move(0, -1)
+		snake.mov(0, -1)
 	case 2:
-		snake.move(1, 0)
+		snake.mov(1, 0)
 	case 3:
-		snake.move(0, 1)
+		snake.mov(0, 1)
 	case 4:
-		snake.move(-1, 0)
+		snake.mov(-1, 0)
 	}
 	x, y := snake.get()
-	vit := field.getVitality(x, y)
+	vit := field.get(x, y)
 	if vit < 0 {
 		pts++
-		for {
-			rand.Seed(time.Now().UnixNano())
-			x = rand.Intn(setwidth - 1)
-			y = rand.Intn(setheight - 1)
-			if new_field.getVitality(x, y) == 0 {
-				new_field.setVitality(x, y, -11)
-				break
-			}
-		}
+		field.next(pts)
 	} else if vit > 0 && direction != 0 {
-		fmt.Printf("GameOver!!!\nYour Score: %v Points\n", pts)
-		exec.Command("stty", "-f", "/dev/tty", "echo").Run()
-		os.Exit(0)
+		end()
 	}
-	new_field.setVitality(snake.x, snake.y, snake.length)
+	new_field.set(snake.x, snake.y, snake.length)
 	for y := 0; y < field.height; y++ {
 		for x := 0; x < field.width; x++ {
-			vit := field.getVitality(x, y)
+			vit := field.get(x, y)
 			if vit > 0 {
-				new_field.setVitality(x, y, vit-1)
+				new_field.set(x, y, vit-1)
 			}
 		}
 	}
 	return new_field
 }
 
-func (field *Field) printField() string {
+func (field *Field) next(p int) {
+	for {
+		rand.Seed(time.Now().UnixNano())
+		x := rand.Intn(setwidth-10) + 5
+		y := rand.Intn(setheight-10) + 5
+		if field.get(x, y) == 0 {
+			field.set(x, y, p*-1)
+			return
+		}
+	}
+}
+
+func (field *Field) print() string {
 	var buffer bytes.Buffer
 	var ptsstr string = fmt.Sprintf("Points: %v \n", pts)
 	buffer.Write([]byte(ptsstr))
-	for y := 1; y < field.height; y++ {
+	for y := 0; y < field.height-2; y++ {
 		for x := 0; x < field.width; x++ {
-			if field.getVitality(x, y) > 0 {
+			if field.get(x, y) > 0 {
 				buffer.WriteByte(byte('#'))
-			} else if field.getVitality(x, y) < 0 {
+			} else if field.get(x, y) < 0 {
 				buffer.WriteByte(byte('O'))
 			} else {
 				buffer.WriteByte(byte(' '))
@@ -156,9 +158,7 @@ func (field *Field) printField() string {
 }
 
 func getDirection() {
-	defer func() {
-		exec.Command("stty", "-f", "/dev/tty", "echo").Run()
-	}()
+	defer end()
 	exec.Command("stty", "-f", "/dev/tty", "cbreak", "min", "1").Run()
 	exec.Command("stty", "-f", "/dev/tty", "-echo").Run()
 
@@ -167,8 +167,7 @@ func getDirection() {
 	go func() {
 		for sig := range c {
 			fmt.Printf("Signal: %v\n", sig)
-			exec.Command("stty", "-f", "/dev/tty", "echo").Run()
-			os.Exit(0)
+			end()
 		}
 	}()
 
@@ -194,16 +193,19 @@ func getDirection() {
 				direction = 4
 			}
 		case "[113]", "quit":
-			exec.Command("stty", "-f", "/dev/tty", "echo").Run()
-			os.Exit(0)
+			end()
 		}
 	}
 }
 
+func end() {
+	fmt.Printf("GameOver!!!\nYour Score: %v Points\n", pts)
+	exec.Command("stty", "-f", "/dev/tty", "echo").Run()
+	os.Exit(0)
+}
+
 func main() {
-	defer func() {
-		exec.Command("stty", "-f", "/dev/tty", "echo").Run()
-	}()
+	defer end()
 	flag.IntVar(&setwidth, "w", 80, "terminal width")
 	flag.IntVar(&setheight, "h", 20, "terminal height")
 	flag.IntVar(&setfps, "f", 6, "frames per second")
@@ -223,8 +225,8 @@ func main() {
 	for {
 		time.Sleep(time.Second / time.Duration(setfps))
 		fmt.Print("\033[2J")
-		field = field.nextRound(snake)
-		str := field.printField()
+		field = field.nextFrame(snake)
+		str := field.print()
 		fmt.Print(str)
 		if ite == 10 {
 			snake.len(1)
