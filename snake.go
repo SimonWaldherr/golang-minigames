@@ -159,8 +159,9 @@ func (field *Field) print() string {
 
 func getDirection() {
 	defer end()
-	exec.Command("stty", "-f", "/dev/tty", "cbreak", "min", "1").Run()
+	exec.Command("stty", "cbreak", "min", "1").Run()
 	exec.Command("stty", "-f", "/dev/tty", "-echo").Run()
+	exec.Command("stty", "-echo").Run()
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt)
@@ -201,6 +202,7 @@ func getDirection() {
 func end() {
 	fmt.Printf("GameOver!!!\nYour Score: %v Points\n", pts)
 	exec.Command("stty", "-f", "/dev/tty", "echo").Run()
+	exec.Command("stty", "echo").Run()
 	os.Exit(0)
 }
 
