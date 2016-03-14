@@ -8,6 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"simonwaldherr.de/go/golibs/ansi"
+	"simonwaldherr.de/go/golibs/as"
+	"simonwaldherr.de/go/golibs/gcurses"
 	"time"
 )
 
@@ -25,6 +28,7 @@ type Snake struct {
 
 var field *Field
 var snake *Snake
+var gover bool
 
 var (
 	pts       int
@@ -113,6 +117,8 @@ func (field *Field) nextFrame(snake *Snake) *Field {
 		field.nextRound(pts)
 	} else if vit > 0 && direction != 0 {
 		end()
+		gover = true
+		return nil
 	}
 	new_field.set(snake.x, snake.y, snake.length)
 	for y := 0; y < field.height; y++ {
@@ -138,16 +144,22 @@ func (field *Field) nextRound(p int) {
 	}
 }
 
-func (field *Field) print() string {
+func (field *Field) print(gameover bool) string {
 	var buffer bytes.Buffer
 	var ptsstr string = fmt.Sprintf("Points: %v \n", pts)
+
 	buffer.Write([]byte(ptsstr))
+
 	for y := 0; y < field.height; y++ {
 		for x := 0; x < field.width; x++ {
 			if field.get(x, y) > 0 {
-				buffer.WriteByte(byte('#'))
+				if gameover {
+					buffer.Write(as.Bytes(ansi.Color("█", ansi.Red)))
+				} else {
+					buffer.Write(as.Bytes(ansi.Color("█", ansi.Green)))
+				}
 			} else if field.get(x, y) < 0 {
-				buffer.WriteByte(byte('O'))
+				buffer.Write(as.Bytes(ansi.Color("█", ansi.Blue)))
 			} else {
 				buffer.WriteByte(byte(' '))
 			}
@@ -200,6 +212,8 @@ func getDirection() {
 }
 
 func end() {
+	fmt.Print(field.print(true))
+	time.Sleep(time.Second / time.Duration(setfps) * 10)
 	fmt.Printf("GameOver!!!\nYour Score: %v Points\n", pts)
 	exec.Command("stty", "-f", "/dev/tty", "echo").Run()
 	exec.Command("stty", "echo").Run()
@@ -212,6 +226,9 @@ func main() {
 	flag.IntVar(&setheight, "h", 20, "terminal height")
 	flag.IntVar(&setfps, "f", 6, "frames per second")
 	flag.Parse()
+
+	writer := gcurses.New()
+	writer.Start()
 
 	setheight -= 2
 
@@ -227,16 +244,15 @@ func main() {
 
 	go getDirection()
 
-	for {
+	for !gover {
 		time.Sleep(time.Second / time.Duration(setfps))
-		fmt.Print("\033[2J")
 		field = field.nextFrame(snake)
-		str := field.print()
-		fmt.Print(str)
+		fmt.Fprintf(writer, "%v", field.print(false))
 		if ite == 10 {
 			snake.len(1)
 			ite = 0
 		}
 		ite++
 	}
+	writer.Stop()
 }
